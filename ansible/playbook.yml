@@ -1,0 +1,25 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+  # Install Docker
+  - name: Install Docker 
+    yum:
+      name: 
+        - docker-20.10.13-2.amzn2
+      state: present
+      update_cache: yes
+    register: dockerinstall
+
+  - name: Enable Docker
+    systemd:
+      name: docker
+      enabled: yes 
+  - name: Start Docker
+    systemd:
+      name: docker
+      state: started 
+
+  - name: Add user-permissions for Docker
+    shell: "usermod -aG docker ec2-user"
+    when: dockerinstall.changed
