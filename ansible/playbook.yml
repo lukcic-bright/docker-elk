@@ -2,6 +2,51 @@
 - hosts: all
   become: yes
   tasks:
+  # Create and mount partition for ELK data
+  - name: Install parted
+    yum:
+      name: parted.x86_64
+      state: present 
+
+  - name: Check if partition exists
+    stat:
+      path: /dev/nvme1n1
+    register: partition
+    
+  - name: "Add new partition /dev/nvme1n1"
+    parted: 
+      device: /dev/nvme1n1
+      number: 1
+      part_type: primary
+      label: gpt
+      state: present
+      name: "ELK_data"
+      part_end: "100%"
+    #when: not partition.stat.exists
+
+  - name: Create filesystem
+    filesystem:
+      fstype: xfs
+      dev: /dev/nvme1n1  
+
+  - name: "Read device information /dev/nvme1n1"
+    parted: 
+      device: /dev/nvme1n1
+      unit: MiB
+    register: device_info    
+
+  - name: Create empty directory
+    file:
+      path: /usr/share/elk
+      state: directory    
+
+  - name: Mount new partition
+    mount:
+      fstype: xfs
+      src: /dev/nvme1n1
+      path: /usr/share/elk
+      state: mounted
+
   # Install Docker
   - name: Install Docker 
     yum:
@@ -9,7 +54,7 @@
         - docker-20.10.13-2.amzn2
       state: present
       update_cache: yes
-    register: dockerinstall
+    register: docker_install
 
   - name: Enable Docker
     systemd:
@@ -23,8 +68,9 @@
 
   - name: Add user-permissions for Docker
     shell: "usermod -aG docker ec2-user && newgrp docker"
-    when: dockerinstall.changed
+    when: docker_install.changed
 
+  # Install Docke-compose
   - name: Check if Docker-compose is installed
     stat:
       path: /usr/bin/docker-compose
@@ -37,11 +83,29 @@
       dest: /usr/bin/docker-compose
       mode: 'u+x,g+x,a+x'
     when: not compose.stat.exists  
-    register: composeinstall  
+    register: compose_install  
 
-  - name: Docker-compose without sudo
+  - name: User link to Docker-compose
     file:
       src: /usr/bin/docker-compose
       dest: /usr/local/bin/docker-compose
       state: link
-    when: composeinstall.changed
+    when: compose_install.changed
+
+  # Install Git
+  - name: Install Git 
+    yum:
+      name: 
+        - git.x86_64
+      state: present
+      update_cache: yes
+
+  # Clone git repo with ELK coompose
+  - name: Clone repository
+    git:
+      repo: 'https://github.com/lukcic-bright/docker-elk'
+      dest: /usr/share/elk/docker-elk
+      clone: yes
+
+  - debug:
+      var: device_info 
