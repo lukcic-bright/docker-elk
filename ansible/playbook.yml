@@ -15,11 +15,33 @@
     systemd:
       name: docker
       enabled: yes 
+
   - name: Start Docker
     systemd:
       name: docker
       state: started 
 
   - name: Add user-permissions for Docker
-    shell: "usermod -aG docker ec2-user"
+    shell: "usermod -aG docker ec2-user && newgrp docker"
     when: dockerinstall.changed
+
+  - name: Check if Docker-compose is installed
+    stat:
+      path: /usr/bin/docker-compose
+    register: compose
+
+  - name: Install Docker-compose
+    remote_user: ec2-user
+    get_url: 
+      url : https://github.com/docker/compose/releases/download/1.29.2/docker-compose-{{ ansible_system }}-{{ ansible_userspace_architecture }}
+      dest: /usr/bin/docker-compose
+      mode: 'u+x,g+x,a+x'
+    when: not compose.stat.exists  
+    register: composeinstall  
+
+  - name: Docker-compose without sudo
+    file:
+      src: /usr/bin/docker-compose
+      dest: /usr/local/bin/docker-compose
+      state: link
+    when: composeinstall.changed
