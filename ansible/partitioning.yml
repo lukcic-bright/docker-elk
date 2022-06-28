@@ -21,12 +21,17 @@
   - name: Create empty /usr/share/elk directory
     file:
       path: /usr/share/elk
-      state: directory  
-      owner: ec2-user
-      group: ec2-user
+      state: directory
   - name: Mount new partition
     mount:
       fstype: xfs
       src: /dev/disk/by-partlabel/ELK_data
       path: /usr/share/elk
       state: mounted
+  - name: Change /usr/share/elk ownership
+    file:
+      path: /usr/share/elk
+      owner: ec2-user
+      group: ec2-user
+      recurse: yes
+      state: directory

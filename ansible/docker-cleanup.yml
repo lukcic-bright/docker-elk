@@ -1,0 +1,10 @@
+---
+- hosts: bit-dev-elk
+  become: no
+  tasks:
+  - name: Stop and remove all containers
+    shell: docker rm -f $(docker ps -aq)
+  - name: Delete volumes
+    shell: docker volume rm $(docker volume ls -q)
+  - name: Delete network
+    shell: docker network rm docker-elk_elk
