@@ -9,7 +9,7 @@
         - docker-20.10.13-2.amzn2
       state: present
       update_cache: yes
-    register: docker_install
+    notify: Reset ssh
 
   - name: Enable Docker
     systemd:
@@ -21,9 +21,11 @@
       name: docker
       state: started 
 
-  - name: Add user-permissions for Docker
-    shell: "usermod -aG docker ec2-user && newgrp docker"
-    when: docker_install.changed
+  - name: Add user to docker group
+    user:
+      name: ec2-user
+      groups: docker
+      append: yes
 
   # Install Docke-compose
   - name: Check if Docker-compose is installed
@@ -61,3 +63,9 @@
       repo: 'https://github.com/lukcic-bright/docker-elk'
       dest: /usr/share/elk/docker-elk
       clone: yes
+      update: yes
+  
+  handlers:
+    - name: Reset ssh 
+      meta:
+        reset_connection
