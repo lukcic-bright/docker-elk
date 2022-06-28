@@ -1,8 +1,7 @@
 ---
-- hosts: all
+- hosts: bit-dev-elk
   become: yes
   tasks:
-  # Install Docker
   - name: Install Docker 
     yum:
       name: 
@@ -10,29 +9,23 @@
       state: present
       update_cache: yes
     notify: Reset ssh
-
   - name: Enable Docker
     systemd:
       name: docker
       enabled: yes 
-
   - name: Start Docker
     systemd:
       name: docker
-      state: started 
-
+      state: started
   - name: Add user to docker group
     user:
       name: ec2-user
       groups: docker
       append: yes
-
-  # Install Docke-compose
   - name: Check if Docker-compose is installed
     stat:
       path: /usr/bin/docker-compose
     register: compose
-
   - name: Install Docker-compose
     remote_user: ec2-user
     get_url: 
@@ -41,30 +34,20 @@
       mode: 'u+x,g+x,a+x'
     when: not compose.stat.exists  
     register: compose_install  
-
   - name: User link to Docker-compose
     file:
       src: /usr/bin/docker-compose
       dest: /usr/local/bin/docker-compose
+      owner: ec2-user
+      group: ec2-user
       state: link
     when: compose_install.changed
-
-  # Install Git
   - name: Install Git 
     yum:
       name: 
         - git.x86_64
       state: present
       update_cache: yes
-
-  # Clone git repo with ELK coompose
-  - name: Clone repository
-    git:
-      repo: 'https://github.com/lukcic-bright/docker-elk'
-      dest: /usr/share/elk/docker-elk
-      clone: yes
-      update: yes
-  
   handlers:
     - name: Reset ssh 
       meta:
